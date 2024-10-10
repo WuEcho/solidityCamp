@@ -10,6 +10,8 @@ contract WETHToken is ERC20,Ownable  {
     event Deposit(address indexed sender,uint256 amount);
     event WithDraw(address indexed sender,uint256 amount);
 
+    error AmountMustBeGenerateThanZero();
+    error InsufficientBalance(uint256 amount);
     receive() external payable{
       deposit();
     }
@@ -20,16 +22,24 @@ contract WETHToken is ERC20,Ownable  {
 
 
     function deposit() payable public returns(bool) {
-        require(msg.value > 0, "value is availabel");
+        if(msg.value <= 0) {
+            revert AmountMustBeGenerateThanZero();
+        }
         _mint(_msgSender(), msg.value);
         emit Deposit(msg.sender,msg.value);
         return true;
     }
 
 
-    function withDraw() public returns(bool) {
-        uint256 amount = balanceOf(msg.sender);
-        require(amount >=0,"you cantnot withdraw");
+    function withDraw(uint256 amount) public returns(bool) {
+        uint256 balance = balanceOf(msg.sender);
+        if(amount <= 0){
+            revert AmountMustBeGenerateThanZero();
+        }
+
+        if(balance < amount){
+          revert InsufficientBalance(amount);
+        }
         _burn(_msgSender(),amount);
         (bool sucess,) = msg.sender.call{value:amount}("");
         require(sucess,"with draw failed");
@@ -38,12 +48,16 @@ contract WETHToken is ERC20,Ownable  {
     }
 
     function transfer(address to,uint256 amount) public override returns(bool) {
-        require(amount >= balanceOf(_msgSender()),"balance not enough");
+        if(amount >= balanceOf(_msgSender())) {
+            revert InsufficientBalance(amount);
+        }
         return super.transfer(to,amount);
     }
 
     function transferFrom(address from,address to,uint256 amount) public override returns(bool) {
-      require(amount >= balanceOf(from),"balance of from is not enough");
+      if(amount >= balanceOf(from)) {
+            revert InsufficientBalance(amount);
+      }
       return super.transferFrom(from,to,amount);
     }
 }
